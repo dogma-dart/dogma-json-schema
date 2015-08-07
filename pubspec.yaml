@@ -1,0 +1,11 @@
+name: dogma_json_schema
+version: 0.0.1
+description: Model generation using a JSON Schema.
+environment:
+  sdk: '>=1.12.0-dev.4.0 <2.0.0'
+dependencies:
+  args: any
+  dogma_data:
+    path: ../dogma-data
+dev_dependencies:
+  test: ^0.12.3+9
