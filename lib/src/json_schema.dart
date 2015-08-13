@@ -15,7 +15,7 @@ import 'dart:async';
 // Imports
 //---------------------------------------------------------------------
 
-import 'package:dogma_data/src/codegen/utils.dart';
+import 'package:dogma_codegen/codegen.dart';
 
 //---------------------------------------------------------------------
 // Library contents

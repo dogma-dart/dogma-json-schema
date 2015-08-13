@@ -18,13 +18,11 @@ import 'dart:io';
 //---------------------------------------------------------------------
 
 import 'package:args/args.dart';
-import 'package:dogma_data/build.dart' as data;
-import 'package:dogma_data/src/codegen/model_generator.dart';
-import 'package:dogma_data/src/codegen/utils.dart';
-import 'package:dogma_data/src/metadata/field_metadata.dart';
-import 'package:dogma_data/src/metadata/model_metadata.dart';
-import 'package:dogma_data/src/metadata/library_metadata.dart';
-import 'package:dogma_data/src/metadata/type_metadata.dart';
+//import 'package:dogma_data/build.dart' as data;
+import 'package:dogma_codegen/codegen.dart';
+import 'package:dogma_codegen/metadata.dart';
+import 'package:dogma_codegen/path.dart';
+import 'package:dogma_codegen/template.dart' as template;
 import 'package:dogma_json_schema/src/json_schema.dart';
 import 'package:path/path.dart' as path;
 
@@ -70,9 +68,28 @@ Future<Null> build(List<String> args,
 
   }
 
-  var metadata = await _readMetadata(rootSchema, packageName, modelPath);
+  template.header(header);
 
-  await _writeModelLibrary(metadata, modelLibrary, modelPath, header);
+  var metadata = await _readMetadata(rootSchema, packageName, modelPath);
+  var exports = [];
+  var libraries = {};
+
+  for (var name in metadata.keys) {
+    exports.add(_modelLibraryMetadata(name, packageName, modelPath, metadata, libraries));
+  }
+
+  for (var export in exports) {
+    await _writeModelLibrary(export);
+  }
+
+  var rootLibrary = new LibraryMetadata(
+      libraryName(packageName, modelLibrary),
+      join(modelLibrary),
+      exported: exports
+  );
+
+  await _writeModelLibrary(rootLibrary);
+/*
   // Build the converters
   await data.build(
       args,
@@ -81,32 +98,81 @@ Future<Null> build(List<String> args,
       converters: converters,
       unmodifiableViews: unmodifiableViews,
       unmodifiableLibrary: unmodifiableLibrary,
+      unmodifiablePath: unmodifiablePath,
       converterLibrary: converterLibrary,
       converterPath: converterPath,
       header: header
   );
+  *
+   */
 }
 
-Future<LibraryMetadata> _readMetadata(String root, String packageName, String modelPath) async {
+Future<Map<String, Map>> _readMetadata(String root, String packageName, String modelPath) async {
   var schema = await _readJsonFile(root);
   var modelSchemas = definitions(schema);
 
   // \TODO Handle cases with multiple files
 
-  var srcLibrary = libraryName(packageName, modelPath);
-  var models = [];
+  // The modelSchemas has the values in the form
+  // "$root#/definitions/$modelName": schema.
+  //
+  // This converts them to the form
+  // "$modelName": schema
+  var models = {};
 
   modelSchemas.forEach((ref, value) {
     var name = _modelName(ref);
-    var snakeName = snakeCase(name);
-    var libraryName = '$srcLibrary.$snakeName';
-    var model = modelMetadata(name, value);
 
-    models.add(model);
+    // \TODO Sanity check models with same name, probably shouldn't happen
+    models[name] = value;
   });
 
-  return
-      new LibraryMetadata('$packageName.models', 'lib/models.dart', models: models);
+  return models;
+}
+
+LibraryMetadata _modelLibraryMetadata(String name,
+                                     String packageName,
+                                     String outputPath,
+                                     Map<String, Map> schema,
+                                     Map<String, LibraryMetadata> libraries)
+{
+  if (libraries.containsKey(name)) {
+    return libraries[name];
+  }
+
+  var model = modelMetadata(name, schema[name]);
+
+  // Get the dependencies
+  var imports = [];
+
+  if (model.explicitSerialization) {
+    var library = new LibraryMetadata('dogma_data.serialize', Uri.parse('package:dogma_data/serialize.dart'));
+    imports.add(library);
+  }
+
+  for (var dependency in modelDependencies(model)) {
+    var dependencyName = dependency.name;
+
+    // Verify that the dependency is within the schema
+    if (schema.containsKey(dependencyName)) {
+      imports.add(_modelLibraryMetadata(dependency.name, packageName, outputPath, schema, libraries));
+    }
+  }
+
+  // Create the library
+  var fileName = '$outputPath/${snakeCase(name)}.dart';
+  var uri = join(fileName);
+
+  var library = new LibraryMetadata(
+      libraryName(packageName, fileName),
+      uri,
+      imported: imports,
+      models: [model]
+  );
+
+  libraries[name] = library;
+
+  return library;
 }
 
 ModelMetadata modelMetadata(String name, Map<String, Map> schema) {
@@ -116,6 +182,7 @@ ModelMetadata modelMetadata(String name, Map<String, Map> schema) {
   properties.forEach((propertyName, property) {
     var type = typeMetadata(property);
     var name = camelCase(propertyName);
+    var comments = property['description'] ?? '';
 
     fields.add(
       new FieldMetadata(
@@ -123,6 +190,7 @@ ModelMetadata modelMetadata(String name, Map<String, Map> schema) {
           type,
           true,
           true,
+          comments: comments,
           serializationName: propertyName)
     );
   });
@@ -139,16 +207,25 @@ TypeMetadata typeMetadata(Map property) {
     var ref = property['\$ref'] as String;
 
     if (ref == null) {
-      var jsonType = property['type'];
-
-      if (jsonType == 'integer') {
-        type = new TypeMetadata('int');
-      } else if (jsonType == 'string') {
-        type = new TypeMetadata('String');
-      } else if (jsonType == 'boolean') {
-        type = new TypeMetadata('bool');
-      } else {
-        type = new TypeMetadata('Map');
+      switch (property['type']) {
+        case 'integer':
+          type = new TypeMetadata('int');
+          break;
+        case 'number':
+          type = new TypeMetadata('num');
+          break;
+        case 'boolean':
+          type = new TypeMetadata('bool');
+          break;
+        case 'string':
+          type = new TypeMetadata('String');
+          break;
+        case 'array':
+          type = new TypeMetadata('List', arguments: [typeMetadata(property['items'])]);
+          break;
+        default:
+          type = new TypeMetadata('Map');
+          break;
       }
     } else {
       type = new TypeMetadata(_modelName(ref));
@@ -166,23 +243,9 @@ String _modelName(String path) {
   return path.substring(lastIndex + 1);
 }
 
-Future<Null> _writeModelLibrary(LibraryMetadata metadata,
-                                String outputPath,
-                                String outputLibrariesTo,
-                                String header) async
-{
-  // Get the directory of the outputPath so relative urls can be generated.
-  var directory = path.dirname(outputPath);
-  var buffer = new StringBuffer();
-
-  buffer.writeln('import \'package:dogma_data/serialize.dart\';');
-
-  for (var model in metadata.models) {
-    buffer.writeln(generateModel(model));
-  }
-
-  var file = new File(outputPath);
-  await file.writeAsString(buffer.toString());
+Future<Null> _writeModelLibrary(LibraryMetadata metadata) async {
+  var file = new File(metadata.uri.toFilePath());
+  await file.writeAsString(generateModelsLibrary(metadata));
 }
 
 Future<String> _readJsonFile(String path) async {
