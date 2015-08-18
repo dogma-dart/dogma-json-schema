@@ -18,13 +18,15 @@ import 'dart:io';
 //---------------------------------------------------------------------
 
 import 'package:args/args.dart';
-//import 'package:dogma_data/build.dart' as data;
 import 'package:dogma_codegen/codegen.dart';
 import 'package:dogma_codegen/metadata.dart';
 import 'package:dogma_codegen/path.dart';
 import 'package:dogma_codegen/template.dart' as template;
+import 'package:dogma_codegen/src/build/converters.dart';
+import 'package:dogma_codegen/src/build/models.dart';
+import 'package:dogma_codegen/src/build/libraries.dart';
+import 'package:dogma_codegen/src/build/unmodifiable_model_views.dart';
 import 'package:dogma_json_schema/src/json_schema.dart';
-import 'package:path/path.dart' as path;
 
 //---------------------------------------------------------------------
 // Library contents
@@ -68,7 +70,7 @@ Future<Null> build(List<String> args,
 
   }
 
-  template.header(header);
+  template.header = header;
 
   var metadata = await _readMetadata(rootSchema, packageName, modelPath);
   var exports = [];
@@ -78,17 +80,76 @@ Future<Null> build(List<String> args,
     exports.add(_modelLibraryMetadata(name, packageName, modelPath, metadata, libraries));
   }
 
-  for (var export in exports) {
-    await _writeModelLibrary(export);
-  }
-
   var rootLibrary = new LibraryMetadata(
-      libraryName(packageName, modelLibrary),
+      libraryNameOld(packageName, modelLibrary),
       join(modelLibrary),
       exported: exports
   );
 
-  await _writeModelLibrary(rootLibrary);
+  await buildModels(rootLibrary, join('lib/src/models'));
+
+  var unmodifiablePath = join('lib/unmodifiable_model_views.dart');
+  var unmodifiableSource = join('lib/src/unmodifiable_model_views');
+
+  var test = unmodifiableModelViewsLibrary(
+      rootLibrary,
+      unmodifiablePath,
+      unmodifiableSource
+  );
+
+  print(test);
+
+  for (var export in test.exported) {
+    print('LIBRARY');
+    print(export.name);
+    print(export.uri);
+
+    print('IMPORTS');
+    for (var import in export.imported) {
+      print(import.name);
+      print(import.uri);
+    }
+
+    print('MODELS');
+    for (var model in export.models) {
+      print(model.name);
+    }
+
+    print('');
+  }
+
+  await buildUnmodifiableViews(test, unmodifiablePath, unmodifiableSource);
+
+  var convertersPath = join('lib/convert.dart');
+  var convertersSource = join('lib/src/convert');
+
+  test = convertersLibrary(rootLibrary, convertersPath, convertersSource);
+
+  for (var export in test.exported) {
+    print('LIBRARY');
+    print(export.name);
+    print(export.uri);
+
+    print('IMPORTS');
+    for (var import in export.imported) {
+      print(import.name);
+      print(import.uri);
+    }
+
+    print('CONVERTERS');
+    for (var converter in export.converters) {
+      print(converter.name);
+    }
+
+    print('FUNCTIONS');
+    for (var function in export.functions) {
+      print(function.name);
+    }
+
+    print('');
+  }
+
+  await buildConverters(test, convertersPath, convertersSource);
 /*
   // Build the converters
   await data.build(
@@ -164,7 +225,7 @@ LibraryMetadata _modelLibraryMetadata(String name,
   var uri = join(fileName);
 
   var library = new LibraryMetadata(
-      libraryName(packageName, fileName),
+      libraryNameOld(packageName, fileName),
       uri,
       imported: imports,
       models: [model]
@@ -243,12 +304,7 @@ String _modelName(String path) {
   return path.substring(lastIndex + 1);
 }
 
-Future<Null> _writeModelLibrary(LibraryMetadata metadata) async {
-  var file = new File(metadata.uri.toFilePath());
-  await file.writeAsString(generateModelsLibrary(metadata));
-}
-
-Future<String> _readJsonFile(String path) async {
+Future<Map> _readJsonFile(String path) async {
   var file = new File(path);
   var contents = await file.readAsString();
 
