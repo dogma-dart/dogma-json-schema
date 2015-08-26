@@ -10,21 +10,19 @@ library dogma_json_schema.build;
 //---------------------------------------------------------------------
 
 import 'dart:async';
-import 'dart:convert';
-import 'dart:io';
 
 //---------------------------------------------------------------------
 // Imports
 //---------------------------------------------------------------------
 
-import 'package:args/args.dart';
 import 'package:dogma_codegen/codegen.dart';
 import 'package:dogma_codegen/metadata.dart';
 import 'package:dogma_codegen/path.dart';
 import 'package:dogma_codegen/template.dart' as template;
+import 'package:dogma_codegen/src/build/build_system.dart';
 import 'package:dogma_codegen/src/build/converters.dart';
+import 'package:dogma_codegen/src/build/file.dart';
 import 'package:dogma_codegen/src/build/models.dart';
-import 'package:dogma_codegen/src/build/libraries.dart';
 import 'package:dogma_codegen/src/build/unmodifiable_model_views.dart';
 import 'package:dogma_json_schema/src/json_schema.dart';
 
@@ -45,31 +43,12 @@ Future<Null> build(List<String> args,
                    String converterPath: 'lib/src/convert',
                    String header: ''}) async
 {
-  // Parse the arguments
-  var parser = new ArgParser()
-      ..addFlag('machine', defaultsTo: false)
-      ..addOption('changed', allowMultiple: true)
-      ..addOption('removed', allowMultiple: true);
-
-  var parsed = parser.parse(args);
-
-  var directory = new Directory(modelPath);
-
-  if (!await directory.exists()) {
-    await directory.create(recursive: true);
-  }
-
-  // Determine the caller
-  //
-  // If the machine flag is present then this was called by build_system and an
-  // incremental build can be performed. Otherwise assume that a full rebuild
-  // has been requested.
-  if (parsed['machine']) {
+  // See if a build should happen
+  if (!await shouldBuild(args, [rootSchema])) {
     return;
-  } else {
-
   }
 
+  // Set the header
   template.header = header;
 
   var metadata = await _readMetadata(rootSchema, packageName, modelPath);
@@ -97,27 +76,6 @@ Future<Null> build(List<String> args,
       unmodifiableSource
   );
 
-  print(test);
-
-  for (var export in test.exported) {
-    print('LIBRARY');
-    print(export.name);
-    print(export.uri);
-
-    print('IMPORTS');
-    for (var import in export.imported) {
-      print(import.name);
-      print(import.uri);
-    }
-
-    print('MODELS');
-    for (var model in export.models) {
-      print(model.name);
-    }
-
-    print('');
-  }
-
   await buildUnmodifiableViews(test, unmodifiablePath, unmodifiableSource);
 
   var convertersPath = join('lib/convert.dart');
@@ -125,51 +83,11 @@ Future<Null> build(List<String> args,
 
   test = convertersLibrary(rootLibrary, convertersPath, convertersSource);
 
-  for (var export in test.exported) {
-    print('LIBRARY');
-    print(export.name);
-    print(export.uri);
-
-    print('IMPORTS');
-    for (var import in export.imported) {
-      print(import.name);
-      print(import.uri);
-    }
-
-    print('CONVERTERS');
-    for (var converter in export.converters) {
-      print(converter.name);
-    }
-
-    print('FUNCTIONS');
-    for (var function in export.functions) {
-      print(function.name);
-    }
-
-    print('');
-  }
-
   await buildConverters(test, convertersPath, convertersSource);
-/*
-  // Build the converters
-  await data.build(
-      args,
-      packageName,
-      modelLibrary,
-      converters: converters,
-      unmodifiableViews: unmodifiableViews,
-      unmodifiableLibrary: unmodifiableLibrary,
-      unmodifiablePath: unmodifiablePath,
-      converterLibrary: converterLibrary,
-      converterPath: converterPath,
-      header: header
-  );
-  *
-   */
 }
 
 Future<Map<String, Map>> _readMetadata(String root, String packageName, String modelPath) async {
-  var schema = await _readJsonFile(root);
+  var schema = await jsonFile(root);
   var modelSchemas = definitions(schema);
 
   // \TODO Handle cases with multiple files
@@ -189,6 +107,37 @@ Future<Map<String, Map>> _readMetadata(String root, String packageName, String m
   });
 
   return models;
+}
+
+LibraryMetadata modelsLibrary(Map<String, Map> schema,
+                              String packageName,
+                              String libraryPath,
+                              String outputPath)
+{
+  var modelSchemas = definitions(schema);
+
+  var metadata = {};
+
+  modelSchemas.forEach((ref, value) {
+    var name = _modelName(ref);
+
+    metadata[name] = value;
+  });
+
+  var exports = [];
+  var libraries = {};
+
+  for (var name in metadata.keys) {
+    exports.add(_modelLibraryMetadata(name, packageName, outputPath, metadata, libraries));
+  }
+
+  var rootLibrary = new LibraryMetadata(
+      libraryNameOld(packageName, libraryPath),
+      join(libraryPath),
+      exported: exports
+  );
+
+  return rootLibrary;
 }
 
 LibraryMetadata _modelLibraryMetadata(String name,
@@ -302,11 +251,4 @@ String _modelName(String path) {
   var lastIndex = path.lastIndexOf('/');
 
   return path.substring(lastIndex + 1);
-}
-
-Future<Map> _readJsonFile(String path) async {
-  var file = new File(path);
-  var contents = await file.readAsString();
-
-  return JSON.decode(contents);
 }
