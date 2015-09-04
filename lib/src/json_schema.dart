@@ -15,9 +15,19 @@ import 'package:dogma_codegen/codegen.dart';
 // Library contents
 //---------------------------------------------------------------------
 
-Map<String, Map> definitions(Map schema) {
-  var library = {};
-
+/// Retrieves the definitions in the [schema] and adds them to the contents of
+/// [library].
+///
+/// After calling the [library] will contain all the definitions where the key
+/// is in the format '$root#/definitions/$name'. The value of root is the value
+/// keyed to the id. The name is the model name, which is either explicitly
+/// stated in the definitions section or inferred by the name of the key
+/// containing an object definition.
+///
+/// This is done so that models defined in multiple schemas can be linked
+/// together. When multiple schemas are involved the function should be invoked
+/// for each schema with the same [library] passed in with each call.
+void definitions(Map schema, Map<String, Map> library) {
   // Use the ID to get the schema
   var root = schema['id'] as String ?? '';
 
@@ -32,19 +42,19 @@ Map<String, Map> definitions(Map schema) {
     // This isn't done through the addAll method as references need to be
     // checked before adding.
     schema.forEach((path, value) {
-      var current = library[path] as Map;
+      var current = library[path];
 
       if ((current == null) || current.isEmpty) {
         library[path] = value;
       }
     });
   });
-
-  return library;
 }
 
-/// Recursive function to get the
-Map<String, Map> _getModelSchema(Map schema, String modelName, String referencePath) {
+Map<String, Map> _getModelSchema(Map schema,
+                                 String modelName,
+                                 String referencePath)
+{
   // Get the properties
   var properties = schema['properties'];
 
@@ -115,10 +125,11 @@ Map<String, Map> _getModelSchema(Map schema, String modelName, String referenceP
     properties[fieldName] = value;
   });
 
-  metadata['$referencePath#/definitions/$modelName'] = schema;
+  metadata[_localReference(modelName, referencePath)] = schema;
 
   return metadata;
 }
 
+/// Gets the local reference for the model [name] contained in the [root].
 String _localReference(String name, String root)
     => '$root#/definitions/$name';
