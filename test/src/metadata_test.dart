@@ -1,0 +1,44 @@
+// Copyright (c) 2015, the Dogma Project Authors.
+// Please see the AUTHORS file for details. All rights reserved.
+// Use of this source code is governed by a zlib license that can be found in
+// the LICENSE file.
+
+library dogma_json_schema.test.src.json_schema_test;
+
+//---------------------------------------------------------------------
+// Imports
+//---------------------------------------------------------------------
+
+import 'package:dogma_codegen/path.dart';
+import 'package:dogma_codegen/src/build/parse.dart';
+import 'package:dogma_codegen/src/build/logging.dart';
+import 'package:dogma_json_schema/src/metadata.dart';
+import 'package:dogma_json_schema/src/json_schema.dart';
+import 'package:test/test.dart';
+
+import 'package:logging/logging.dart';
+
+//---------------------------------------------------------------------
+// Library contents
+//---------------------------------------------------------------------
+
+/// Test entry point.
+void main() {
+  initializeLogging(Level.ALL);
+
+  test('Definitions', () async {
+    var schema = await jsonFile('test/schemas/definitions.json');
+
+    var library = {};
+    definitions(schema, library);
+
+    var models = modelsLibrary(
+        library,
+        'schemas',
+        join('models.dart'),
+        join('src/models')
+    );
+
+    expect(true, true);
+  });
+}
