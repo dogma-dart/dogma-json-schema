@@ -100,13 +100,18 @@ LibraryMetadata _modelLibraryMetadata(String name,
 }
 
 ModelMetadata modelMetadata(String name, Map<String, Map> schema) {
+  _logger.info('Creating model $name');
+
   var properties = schema['properties'] as Map<String, Map>;
   var fields = new List<SerializableFieldMetadata>();
 
   properties.forEach((propertyName, property) {
     var type = typeMetadata(property);
+    print(propertyName);
     var name = camelCase(propertyName);
     var comments = property['description'] ?? '';
+
+    _logger.fine('Adding field $name of type ${type.name}');
 
     fields.add(
         new SerializableFieldMetadata(
@@ -131,25 +136,48 @@ TypeMetadata typeMetadata(Map property) {
     var ref = property['\$ref'] as String;
 
     if (ref == null) {
-      switch (property['type']) {
-        case 'integer':
-          type = new TypeMetadata('int');
-          break;
-        case 'number':
-          type = new TypeMetadata('num');
-          break;
-        case 'boolean':
-          type = new TypeMetadata('bool');
-          break;
-        case 'string':
-          type = new TypeMetadata('String');
-          break;
-        case 'array':
-          type = new TypeMetadata('List', arguments: [typeMetadata(property['items'])]);
-          break;
-        default:
-          type = new TypeMetadata('Map');
-          break;
+      // Check the format first
+      //
+      // The format can contain a more explicit type for the metadata than
+      // what is present in 'type'. For example a DateTime will often be of
+      // 'type' string.
+      var format = property['format'];
+
+      if (format != null) {
+        switch (format) {
+          case 'date':
+          case 'date-time':
+            type = new TypeMetadata('DateTime');
+            break;
+          case 'uri':
+            type = new TypeMetadata('Uri');
+            break;
+        }
+      }
+
+      // Check the type next
+      if (type == null) {
+        switch (property['type']) {
+          case 'integer':
+            type = new TypeMetadata('int');
+            break;
+          case 'number':
+            type = new TypeMetadata('num');
+            break;
+          case 'boolean':
+            type = new TypeMetadata('bool');
+            break;
+          case 'string':
+            type = new TypeMetadata('String');
+            break;
+          case 'array':
+            type = new TypeMetadata(
+                'List', arguments: [typeMetadata(property['items'])]);
+            break;
+          default:
+            type = new TypeMetadata('Map');
+            break;
+        }
       }
     } else {
       type = new TypeMetadata(_modelName(ref));

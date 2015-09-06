@@ -20,6 +20,7 @@ import 'package:dogma_codegen/template.dart' as template;
 import 'package:dogma_codegen/src/build/build_system.dart';
 import 'package:dogma_codegen/src/build/converters.dart';
 import 'package:dogma_codegen/src/build/default_paths.dart';
+import 'package:dogma_codegen/src/build/logging.dart';
 import 'package:dogma_codegen/src/build/parse.dart';
 import 'package:dogma_codegen/src/build/unmodifiable_model_views.dart';
 import 'package:dogma_json_schema/src/json_schema.dart';
@@ -99,6 +100,9 @@ Future<Null> build(List<String> args,
                    String convertPath: defaultConvertPath,
                    String header: ''}) async
 {
+  // Initialize logging
+  initializeLogging();
+
   // See if a build should happen
   if (!await shouldBuild(args, [rootSchema, modelPath, unmodifiablePath, convertPath])) {
     return;
