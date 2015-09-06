@@ -3,7 +3,7 @@
 // Use of this source code is governed by a zlib license that can be found in
 // the LICENSE file.
 
-library dogma_json_schema.test.src.json_schema_test;
+library dogma_json_schema.test.src.metadata_test;
 
 //---------------------------------------------------------------------
 // Imports
