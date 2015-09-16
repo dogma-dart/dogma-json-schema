@@ -103,13 +103,15 @@ ModelMetadata modelMetadata(String name, Map<String, Map> schema) {
   _logger.info('Creating model $name');
 
   var properties = schema['properties'] as Map<String, Map>;
+  var requiredFields = schema['required'] ?? [] as List<String>;
   var fields = new List<SerializableFieldMetadata>();
 
   properties.forEach((propertyName, property) {
     var type = typeMetadata(property);
-    print(propertyName);
     var name = camelCase(propertyName);
     var comments = property['description'] ?? '';
+    var required = requiredFields.isEmpty || requiredFields.contains(propertyName);
+    var defaultsTo;
 
     _logger.fine('Adding field $name of type ${type.name}');
 
@@ -120,7 +122,10 @@ ModelMetadata modelMetadata(String name, Map<String, Map> schema) {
             true,
             true,
             comments: comments,
-            serializationName: propertyName)
+            serializationName: propertyName,
+            optional: !required,
+            defaultsTo: defaultsTo
+        )
     );
   });
 
