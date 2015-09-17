@@ -133,7 +133,7 @@ ModelMetadata modelMetadata(String name, Map<String, Map> schema) {
 }
 
 TypeMetadata typeMetadata(Map property) {
-  var dartType = property['dartType'] as String;
+  var dartType = property['x-dart-type'] as String;
   var type;
 
   if (dartType == null) {
