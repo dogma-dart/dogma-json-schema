@@ -9,7 +9,7 @@ library dogma_json_schema.src.json_schema;
 // Imports
 //---------------------------------------------------------------------
 
-import 'package:dogma_codegen/codegen.dart';
+import 'package:dogma_codegen/identifier.dart';
 
 //---------------------------------------------------------------------
 // Library contents
