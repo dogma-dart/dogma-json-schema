@@ -11,6 +11,8 @@ library dogma_json_schema.src.json_schema;
 
 import 'package:dogma_codegen/identifier.dart';
 
+import 'specification.dart' as spec;
+
 //---------------------------------------------------------------------
 // Library contents
 //---------------------------------------------------------------------
@@ -29,10 +31,10 @@ import 'package:dogma_codegen/identifier.dart';
 /// for each schema with the same [library] passed in with each call.
 void definitions(Map schema, Map<String, Map> library) {
   // Use the ID to get the schema
-  var root = schema['id'] as String ?? '';
+  var root = schema[spec.identifier] as String ?? '';
 
   // Look at the definitions
-  var definitions = schema['definitions'] as Map ?? {};
+  var definitions = schema[spec.definitions] as Map ?? {};
 
   definitions.forEach((modelName, definition) {
     var schema = _getModelSchema(definition, modelName, root);
@@ -56,7 +58,7 @@ Map<String, Map> _getModelSchema(Map schema,
                                  String referencePath)
 {
   // Get the properties
-  var properties = schema['properties'];
+  var properties = schema[spec.properties];
 
   if (properties == null) {
     return {};
@@ -74,17 +76,17 @@ Map<String, Map> _getModelSchema(Map schema,
     // within JSON Schema but has a specific type within the application. It
     // can also be used to avoid parsing a portion of the schema as it is
     // assumed that the dartType is defined elsewhere.
-    var dartType = field['dartType'];
+    var dartType = field[spec.dartType];
 
     if (dartType == null) {
-      var type = field['type'];
+      var type = field[spec.type];
 
       // \TODO Sanity checking for field?
 
       // Determine if the type is defined
       if (type == null) {
         // Verify that a reference type is there
-        var ref = field['\$ref'];
+        var ref = field[spec.reference];
 
         if (ref == null) {
           // \TODO Should probably throw here
@@ -99,7 +101,7 @@ Map<String, Map> _getModelSchema(Map schema,
             : ref;
 
         metadata[refPath] = {};
-      } else if (type == 'object') {
+      } else if (type == spec.object) {
         var name = pascalCase(fieldName);
         var fieldSchema = _getModelSchema(field, name, referencePath);
 
@@ -115,7 +117,9 @@ Map<String, Map> _getModelSchema(Map schema,
           //
           // This is done because the map cannot be modified while iterating
           // through the contents.
-          replaceWith[fieldName] = { '\$ref': _localReference(name, referencePath) };
+          replaceWith[fieldName] = {
+            spec.reference: _localReference(name, referencePath)
+          };
         }
       }
     }
@@ -132,4 +136,4 @@ Map<String, Map> _getModelSchema(Map schema,
 
 /// Gets the local reference for the model [name] contained in the [root].
 String _localReference(String name, String root)
-    => '$root#/definitions/$name';
+    => '$root#/${spec.definitions}/$name';

@@ -15,6 +15,8 @@ import 'package:dogma_codegen/path.dart';
 import 'package:dogma_codegen/src/build/libraries.dart';
 import 'package:logging/logging.dart';
 
+import 'specification.dart' as spec;
+
 //---------------------------------------------------------------------
 // Library contents
 //---------------------------------------------------------------------
@@ -102,14 +104,14 @@ LibraryMetadata _modelLibraryMetadata(String name,
 ModelMetadata modelMetadata(String name, Map<String, Map> schema) {
   _logger.info('Creating model $name');
 
-  var properties = schema['properties'] as Map<String, Map>;
-  var requiredFields = schema['required'] ?? [] as List<String>;
+  var properties = schema[spec.properties] as Map<String, Map>;
+  var requiredFields = schema[spec.required] ?? [] as List<String>;
   var fields = new List<SerializableFieldMetadata>();
 
   properties.forEach((propertyName, property) {
     var type = typeMetadata(property);
     var name = camelCase(propertyName);
-    var comments = property['description'] ?? '';
+    var comments = _comments(property[spec.description], property[spec.example]);
     var required = requiredFields.isEmpty || requiredFields.contains(propertyName);
     var defaultsTo;
 
@@ -133,12 +135,12 @@ ModelMetadata modelMetadata(String name, Map<String, Map> schema) {
 }
 
 TypeMetadata typeMetadata(Map property) {
-  var dartType = property['x-dart-type'] as String;
+  var dartType = property[spec.dartType] as String;
   var type;
 
   if (dartType == null) {
     // See if the value is a reference
-    var ref = property['\$ref'] as String;
+    var ref = property[spec.reference] as String;
 
     if (ref == null) {
       // Check the format first
@@ -146,7 +148,7 @@ TypeMetadata typeMetadata(Map property) {
       // The format can contain a more explicit type for the metadata than
       // what is present in 'type'. For example a DateTime will often be of
       // 'type' string.
-      var format = property['format'];
+      var format = property[spec.format];
 
       if (format != null) {
         switch (format) {
@@ -162,7 +164,7 @@ TypeMetadata typeMetadata(Map property) {
 
       // Check the type next
       if (type == null) {
-        switch (property['type']) {
+        switch (property[spec.type]) {
           case 'integer':
             type = new TypeMetadata('int');
             break;
@@ -177,7 +179,7 @@ TypeMetadata typeMetadata(Map property) {
             break;
           case 'array':
             type = new TypeMetadata(
-                'List', arguments: [typeMetadata(property['items'])]);
+                'List', arguments: [typeMetadata(property[spec.items])]);
             break;
           default:
             type = new TypeMetadata('Map');
@@ -198,4 +200,28 @@ String _modelName(String path) {
   var lastIndex = path.lastIndexOf('/');
 
   return path.substring(lastIndex + 1);
+}
+
+/// Adds comments for the metadata using the [description] and [example].
+String _comments(String description, String example) {
+  description ??= '';
+  example ??= '';
+
+  var buffer = new StringBuffer();
+
+  buffer.write(description);
+
+  if (example.isNotEmpty) {
+    if (buffer.isNotEmpty) {
+      buffer.writeln();
+    }
+
+    // Split the example into lines so markdown code blocks can be added
+    for (var line in example.split('\n')) {
+      buffer.write('    ');
+      buffer.writeln(line);
+    }
+  }
+
+  return buffer.toString();
 }
