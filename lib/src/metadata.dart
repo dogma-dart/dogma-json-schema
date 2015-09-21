@@ -64,24 +64,39 @@ LibraryMetadata _modelLibraryMetadata(String name,
     return libraries[name];
   }
 
-  var model = modelMetadata(name, schema[name]);
+  var imports = new List<LibraryMetadata>();
+  var models = new List<ModelMetadata>();
+  var enumerations = new List<EnumMetadata>();
 
-  // Get the dependencies
-  var imports = [];
+  var modelSchema = schema[name];
 
-  if (model.explicitSerialization) {
-    _logger.finer('Model requires explicit serialization');
-    var library = dogmaSerialize;
-    imports.add(library);
-  }
+  if (!modelSchema.containsKey(spec.enumeration)) {
+    var model = modelMetadata(name, modelSchema);
 
-  for (var dependency in modelDependencies(model)) {
-    var dependencyName = dependency.name;
-
-    // Verify that the dependency is within the schema
-    if (schema.containsKey(dependencyName)) {
-      imports.add(_modelLibraryMetadata(dependency.name, packageName, outputPath, schema, libraries));
+    if (model.explicitSerialization) {
+      _logger.finer('Model requires explicit serialization');
+      imports.add(dogmaSerialize);
     }
+
+    for (var dependency in modelDependencies(model)) {
+      var dependencyName = dependency.name;
+
+      // Verify that the dependency is within the schema
+      if (schema.containsKey(dependencyName)) {
+        imports.add(_modelLibraryMetadata(dependency.name, packageName, outputPath, schema, libraries));
+      }
+    }
+
+    models.add(model);
+  } else {
+    var enumeration = enumMetadata(name, modelSchema);
+
+    if (enumeration.explicitSerialization) {
+      _logger.finer('Enumeration requires explicit serialization');
+      imports.add(dogmaSerialize);
+    }
+
+    enumerations.add(enumeration);
   }
 
   // Create the library
@@ -91,7 +106,8 @@ LibraryMetadata _modelLibraryMetadata(String name,
       libraryName(packageName, uri),
       uri,
       imported: imports,
-      models: [model]
+      models: models,
+      enumerations: enumerations
   );
 
   _logger.info('Creating library ${library.name} at ${library.uri}');
@@ -111,7 +127,7 @@ ModelMetadata modelMetadata(String name, Map<String, Map> schema) {
   properties.forEach((propertyName, property) {
     var type = typeMetadata(property);
     var name = camelCase(propertyName);
-    var comments = _comments(property[spec.description], property[spec.example]);
+    var comments = _comments(property);
     var required = requiredFields.isEmpty || requiredFields.contains(propertyName);
     var defaultsTo;
 
@@ -131,9 +147,47 @@ ModelMetadata modelMetadata(String name, Map<String, Map> schema) {
     );
   });
 
-  return new ModelMetadata(name, fields);
+  var classComments = _comments(schema);
+
+  return new ModelMetadata(name, fields, comments: classComments);
 }
 
+/// Creates metadata for an enumeration with the given [name] defined by the
+/// value of [schema].
+EnumMetadata enumMetadata(String name, Map<String, Map> schema) {
+  _logger.info('Creating enum $name');
+  // \TODO Sanity check based on type?? Currently assuming string
+
+  var values = schema[spec.enumNames] ?? new List<String>();
+  var encoded = new List<String>();
+  var enums = schema['enum'];
+
+  if (values.isEmpty) {
+    for (var value in enums) {
+      values.add(camelCase(value));
+      encoded.add(value);
+    }
+  } else {
+    for (var value in enums) {
+      encoded.add(value);
+    }
+  }
+
+  var valueComments = schema[spec.enumDescriptions]
+      ?? new List<String>.filled(values.length, '');
+
+  var comments = _comments(schema);
+
+  return new EnumMetadata(
+      name,
+      values,
+      encoded: encoded,
+      comments: comments,
+      valueComments: valueComments
+  );
+}
+
+/// Creates type metadata for the given [property] field.
 TypeMetadata typeMetadata(Map property) {
   var dartType = property[spec.dartType] as String;
   var type;
@@ -203,9 +257,9 @@ String _modelName(String path) {
 }
 
 /// Adds comments for the metadata using the [description] and [example].
-String _comments(String description, String example) {
-  description ??= '';
-  example ??= '';
+String _comments(Map schema) {
+  var description = schema[spec.description] as String ?? '';
+  var example = schema[spec.example] as String ?? '';
 
   var buffer = new StringBuffer();
 
@@ -215,6 +269,8 @@ String _comments(String description, String example) {
     if (buffer.isNotEmpty) {
       buffer.writeln();
     }
+
+    example = example.trim();
 
     // Split the example into lines so markdown code blocks can be added
     for (var line in example.split('\n')) {

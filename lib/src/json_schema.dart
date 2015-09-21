@@ -57,77 +57,80 @@ Map<String, Map> _getModelSchema(Map schema,
                                  String modelName,
                                  String referencePath)
 {
-  // Get the properties
-  var properties = schema[spec.properties];
-
-  if (properties == null) {
-    return {};
-  }
-
   var metadata = {};
-  var replaceWith = {};
 
-  // Look through the properties for references or objects that could be
-  // references
-  properties.forEach((fieldName, field) {
-    // Look for an explicit Dart Type defined
-    //
-    // This is an extension for Dogma to use when a value isn't defined
-    // within JSON Schema but has a specific type within the application. It
-    // can also be used to avoid parsing a portion of the schema as it is
-    // assumed that the dartType is defined elsewhere.
-    var dartType = field[spec.dartType];
+  if (!schema.containsKey(spec.enumeration)) {
+    // Get the properties
+    var properties = schema[spec.properties];
 
-    if (dartType == null) {
-      var type = field[spec.type];
+    if (properties == null) {
+      return {};
+    }
 
-      // \TODO Sanity checking for field?
+    var replaceWith = {};
 
-      // Determine if the type is defined
-      if (type == null) {
-        // Verify that a reference type is there
-        var ref = field[spec.reference];
+    // Look through the properties for references or objects that could be
+    // references
+    properties.forEach((fieldName, field) {
+      // Look for an explicit Dart Type defined
+      //
+      // This is an extension for Dogma to use when a value isn't defined
+      // within JSON Schema but has a specific type within the application. It
+      // can also be used to avoid parsing a portion of the schema as it is
+      // assumed that the dartType is defined elsewhere.
+      var dartType = field[spec.dartType];
 
-        if (ref == null) {
-          // \TODO Should probably throw here
-        }
+      if (dartType == null) {
+        var type = field[spec.type];
 
-        // Add the reference to the definitions
-        //
-        // If the value starts with # then it is a local reference otherwise
-        // it is defined in another schema.
-        var refPath = ref.startsWith('#')
-            ? '$referencePath$ref'
-            : ref;
+        // \TODO Sanity checking for field?
 
-        metadata[refPath] = {};
-      } else if (type == spec.object) {
-        var name = pascalCase(fieldName);
-        var fieldSchema = _getModelSchema(field, name, referencePath);
+        // Determine if the type is defined
+        if (type == null) {
+          // Verify that a reference type is there
+          var ref = field[spec.reference];
 
-        // Check to see if there was any schema data
-        //
-        // If no schema data was present then this should just be a standard
-        // Map rather than a type.
-        if (fieldSchema.isNotEmpty) {
-          // Add all the contents of the metadata received
-          metadata.addAll(fieldSchema);
+          if (ref == null) {
+            // \TODO Should probably throw here
+          }
 
-          // Mark the property for replacement
+          // Add the reference to the definitions
           //
-          // This is done because the map cannot be modified while iterating
-          // through the contents.
-          replaceWith[fieldName] = {
-            spec.reference: _localReference(name, referencePath)
-          };
+          // If the value starts with # then it is a local reference otherwise
+          // it is defined in another schema.
+          var refPath = ref.startsWith('#')
+              ? '$referencePath$ref'
+              : ref;
+
+          metadata[refPath] = {};
+        } else if (type == spec.object) {
+          var name = pascalCase(fieldName);
+          var fieldSchema = _getModelSchema(field, name, referencePath);
+
+          // Check to see if there was any schema data
+          //
+          // If no schema data was present then this should just be a standard
+          // Map rather than a type.
+          if (fieldSchema.isNotEmpty) {
+            // Add all the contents of the metadata received
+            metadata.addAll(fieldSchema);
+
+            // Mark the property for replacement
+            //
+            // This is done because the map cannot be modified while iterating
+            // through the contents.
+            replaceWith[fieldName] = {
+              spec.reference: _localReference(name, referencePath)
+            };
+          }
         }
       }
-    }
-  });
+    });
 
-  replaceWith.forEach((fieldName, value) {
-    properties[fieldName] = value;
-  });
+    replaceWith.forEach((fieldName, value) {
+      properties[fieldName] = value;
+    });
+  }
 
   metadata[_localReference(modelName, referencePath)] = schema;
 

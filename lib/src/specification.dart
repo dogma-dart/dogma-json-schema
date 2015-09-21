@@ -14,8 +14,6 @@ library dogma_json_schema.src.specification;
 const String identifier = 'id';
 /// The key for the definitions section.
 const String definitions = 'definitions';
-/// The key for the dart type.
-const String dartType = 'x-dart-type';
 /// The key for a type.
 const String type = 'type';
 /// The key for a reference.
@@ -37,3 +35,14 @@ const String items = 'items';
 
 /// The value for an object.
 const String object = 'object';
+
+//---------------------------------------------------------------------
+// JSON Schema extensions
+//---------------------------------------------------------------------
+
+/// The key for the dart type.
+const String dartType = 'x-dart-type';
+/// The key for enumeration names.
+const String enumNames = 'x-enum-names';
+/// The key for enumeration descriptions.
+const String enumDescriptions = 'x-enum-descriptions';
