@@ -53,17 +53,17 @@ definition.
 
 ```json
 {
-  "definitions": {
-    "Appointment": {
+  "Appointment": {
+    "properties": {
       "name": {
-        "description": "The name of the appointment",
-        "type": "string"
+        "description":"The name of the appointment",
+        "type":"string"
       },
       "time": {
-        "description": "When the appointment begins",
-        "type": "integer",
-        "format": "int64",
-        "x-dart-type": "DateTime"
+        "description":"When the appointment begins",
+        "type":"integer",
+        "format":"int64",
+        "x-dart-type":"DateTime"
       }
     }
   }
@@ -73,7 +73,14 @@ definition.
 This will generate the following definition.
 
 ```dart
+library my_library.src.models.appointment;
 
+class Appointment {
+  /// When the appointment begins
+  DateTime time;
+  /// The name of the appointment
+  String name;
+}
 ```
 
 When using this field a function to (de)serialize the value needs to be provided. See the documentation of
@@ -110,6 +117,17 @@ strings then this field is required.
 This will generate the following definition.
 
 ```dart
+library my_library.src.models.image_size;
+
+import 'package:dogma_data/serialize.dart';
+
+/// The size of the image.
+@Serialize.values(const {
+  's': ImageSize.small,
+  'm': ImageSize.medium,
+  'l': ImageSize.large
+})
+enum ImageSize { small, medium, large }
 
 ```
 #### x-enum-descriptions
@@ -119,24 +137,15 @@ The `x-enum-descriptions` value allows individual enum values to contain code co
 ```json
 {
   "definitions": {
-    "Status": {
-      "description": "The status result of a build job.",
+    "AddressType": {
       "type": "string",
       "enum": [
-        "success",
-        "failure",
-        "pending",
-        "started",
-        "error",
-        "killed"
+        "residential",
+        "business"
       ],
       "x-enum-descriptions": [
-        "The build was successful.",
-        "The build failed.",
-        "The results of the build are pending.",
-        "The build was started.",
-        "An error occurred during the build.",
-        "The build was killed by a user."
+        "A home address.",
+        "The address of a business."
       ]
     }
   }
@@ -145,7 +154,14 @@ The `x-enum-descriptions` value allows individual enum values to contain code co
 This will generate the following definition.
 
 ```dart
+library my_library.src.models.address_type;
 
+enum AddressType {
+  /// A home address.
+  residential,
+  /// The address of a business.
+  business
+}
 ```
 
 ## Features and bugs
