@@ -1,19 +1,29 @@
 #!/bin/sh
 set -ex
 
-# Clone dependencies
-git clone https://github.com/dogma-dart/dogma-codegen.git ../dogma-codegen
-git clone https://github.com/dogma-dart/dogma-data.git ../dogma-data
-
 # Get version
 dart --version
 
-# Install dependencies
+# Get dependencies
+pub global activate coverage
+pub global activate linter
 pub install
 
 # Run the linter
-pub global activate linter
-pub global run linter .
+#pub global activate linter
+#pub global run linter .
 
 # Run the tests
-dart --checked test/all.dart
+dart --checked --observe=8000 test/all.dart & \
+pub global run coverage:collect_coverage \
+    --port=8000 \
+    --out coverage.json \
+    --resume-isolates & \
+wait
+
+pub global run coverage:format_coverage \
+    --package-root=packages \
+    --report-on lib \
+    --in coverage.json \
+    --out lcov.info \
+    --lcov
