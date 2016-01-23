@@ -3,7 +3,8 @@ build:
   pull: true
   commands:
     - sh build.sh
+publish:
+  coverage
 matrix:
   DART_VERSION:
-    - latest
-    - "1.13.0-dev.1.0"
+    - "1.14.0-dev.7.2"

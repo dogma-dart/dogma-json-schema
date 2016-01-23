@@ -37,8 +37,8 @@ LibraryMetadata modelsLibrary(Map<String, Map> schema,
     metadata[name] = value;
   });
 
-  var exports = [];
-  var libraries = {};
+  var exports = <LibraryMetadata>[];
+  var libraries = <String, LibraryMetadata>{};
 
   for (var name in metadata.keys) {
     exports.add(_modelLibraryMetadata(name, packageName, outputPath, metadata, libraries));
@@ -65,10 +65,9 @@ LibraryMetadata _modelLibraryMetadata(String name,
   }
 
   var imports = new List<LibraryMetadata>();
-  var models = new List<ModelMetadata>();
-  var enumerations = new List<EnumMetadata>();
+  var classes = new List<ClassMetadata>();
 
-  var modelSchema = schema[name];
+  var modelSchema = schema[name] as Map<String, Map>;
 
   if (!modelSchema.containsKey(spec.enumeration)) {
     var model = modelMetadata(name, modelSchema);
@@ -87,7 +86,7 @@ LibraryMetadata _modelLibraryMetadata(String name,
       }
     }
 
-    models.add(model);
+    classes.add(model);
   } else {
     var enumeration = enumMetadata(name, modelSchema);
 
@@ -96,7 +95,7 @@ LibraryMetadata _modelLibraryMetadata(String name,
       imports.add(dogmaSerialize);
     }
 
-    enumerations.add(enumeration);
+    classes.add(enumeration);
   }
 
   // Create the library
@@ -106,8 +105,7 @@ LibraryMetadata _modelLibraryMetadata(String name,
       libraryName(packageName, uri),
       uri,
       imported: imports,
-      models: models,
-      enumerations: enumerations
+      classes: classes
   );
 
   _logger.info('Creating library ${library.name} at ${library.uri}');
@@ -121,7 +119,7 @@ ModelMetadata modelMetadata(String name, Map<String, Map> schema) {
   _logger.info('Creating model $name');
 
   var properties = schema[spec.properties] as Map<String, Map>;
-  var requiredFields = schema[spec.required] ?? [] as List<String>;
+  var requiredFields = schema[spec.required] as List<String>?? <String>[];
   var fields = new List<SerializableFieldMetadata>();
 
   properties.forEach((propertyName, property) {
@@ -158,9 +156,9 @@ EnumMetadata enumMetadata(String name, Map<String, Map> schema) {
   _logger.info('Creating enum $name');
   // \TODO Sanity check based on type?? Currently assuming string
 
-  var values = schema[spec.enumNames] ?? new List<String>();
-  var encoded = new List<String>();
-  var enums = schema['enum'];
+  var values = (schema[spec.enumNames] ?? []) as List<String>;
+  var encoded = <String>[];
+  var enums = schema['enum'] as List<String>;
 
   if (values.isEmpty) {
     for (var value in enums) {
@@ -173,7 +171,7 @@ EnumMetadata enumMetadata(String name, Map<String, Map> schema) {
     }
   }
 
-  var valueComments = schema[spec.enumDescriptions]
+  var valueComments = schema[spec.enumDescriptions] as List<String>
       ?? new List<String>.filled(values.length, '');
 
   var comments = _comments(schema);

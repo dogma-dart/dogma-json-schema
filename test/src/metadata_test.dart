@@ -31,7 +31,7 @@ void main() {
   test('Definitions', () async {
     var schema = await jsonFile('test/schemas/definitions.json');
 
-    var library = {};
+    var library = <String, Map>{};
     definitions(schema, library);
 
     var models = modelsLibrary(

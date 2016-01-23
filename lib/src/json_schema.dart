@@ -57,14 +57,14 @@ Map<String, Map> _getModelSchema(Map schema,
                                  String modelName,
                                  String referencePath)
 {
-  var metadata = {};
+  var metadata = <String, Map>{};
 
   if (!schema.containsKey(spec.enumeration)) {
     // Get the properties
     var properties = schema[spec.properties];
 
     if (properties == null) {
-      return {};
+      return <String, Map>{};
     }
 
     var replaceWith = {};
