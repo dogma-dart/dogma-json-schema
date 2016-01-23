@@ -4,7 +4,7 @@ build:
   commands:
     - sh build.sh
 publish:
-  coverage
+  coverage:
 matrix:
   DART_VERSION:
     - "1.14.0-dev.7.2"
