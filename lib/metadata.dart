@@ -9,4 +9,5 @@ library dogma_json_schema.metadata;
 // Exports
 //---------------------------------------------------------------------
 
+export 'src/metadata/commented.dart';
 export 'src/metadata/type_metadata.dart';
