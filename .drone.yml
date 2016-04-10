@@ -3,8 +3,14 @@ build:
   pull: true
   commands:
     - sh build.sh
-publish:
-  coverage:
+  environment:
+    - DARTANALYZER_FLAGS=--fatal-warnings
 matrix:
   DART_VERSION:
-    - "1.14.0-dev.7.2"
+    - latest
+    - dev
+publish:
+  coverage:
+    when:
+      matrix:
+        DART_VERSION: latest
