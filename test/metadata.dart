@@ -10,9 +10,8 @@
 //---------------------------------------------------------------------
 
 import 'package:test/test.dart';
-import 'package:logging/logging.dart';
 
-import 'metadata.dart' as metadata;
+import 'src/metadata/type_metadata_test.dart' as type_metadata_test;
 
 //---------------------------------------------------------------------
 // Library contents
@@ -20,12 +19,5 @@ import 'metadata.dart' as metadata;
 
 /// Entry point for tests.
 void main() {
-  // Start logging
-  Logger.root.level = Level.ALL;
-  Logger.root.onRecord.listen((LogRecord rec) {
-    print('${rec.level.name}: ${rec.time}: ${rec.message}');
-  });
-
-  // Run tests
-  group('Metadata tests', metadata.main);
+  group('TypeMetadata', type_metadata_test.main);
 }
