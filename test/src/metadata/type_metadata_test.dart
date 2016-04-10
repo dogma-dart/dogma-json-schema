@@ -16,26 +16,24 @@ import 'package:dogma_json_schema/metadata.dart';
 // Library contents
 //---------------------------------------------------------------------
 
-TypeMetadata _intType = new TypeMetadata.int();
 TypeMetadata _numType = new TypeMetadata.num();
-TypeMetadata _boolType = new TypeMetadata.bool();
-TypeMetadata _stringType = new TypeMetadata.string();
 TypeMetadata _dateTimeType = new TypeMetadata('DateTime');
 TypeMetadata _uriType = new TypeMetadata('Uri');
 
 /// Test entry point.
 void main() {
   test('int', () {
-    expect(typeMetadata({'type': 'integer'}), equals(_intType));
+    expect(typeMetadata({'type': 'integer'}).isInt, isTrue);
   });
   test('num', () {
+    // Explicitly check for the num type as isNum is also true for integers
     expect(typeMetadata({'type': 'number'}), equals(_numType));
   });
   test('bool', () {
-    expect(typeMetadata({'type': 'boolean'}), equals(_boolType));
+    expect(typeMetadata({'type': 'boolean'}).isBool, isTrue);
   });
   test('string', () {
-    expect(typeMetadata({'type': 'string'}), equals(_stringType));
+    expect(typeMetadata({'type': 'string'}).isString, isTrue);
   });
   // Formats
   test('DateTime', () {
