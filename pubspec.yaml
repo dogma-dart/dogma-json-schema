@@ -1,11 +1,18 @@
 name: dogma_json_schema
-version: 0.0.1
+version: 0.1.0
 description: Model generation using a JSON Schema.
 author: Don Olmstead <don.j.olmstead@gmail.com>
 homepage: http://dogma-dart.github.io/
 environment:
   sdk: '>=1.14.0-any <2.0.0'
 dependencies:
-  dogma_codegen: ^0.0.1
+  dogma_codegen:
+    path: ../dogma-codegen
+  dogma_codegen_model:
+    path: ../dogma-codegen-model
+  dogma_convert:
+    path: ../dogma-convert
+  dogma_source_analyzer:
+    path: ../dogma-source-analyzer
 dev_dependencies:
-  test: ^0.12.3+9
+  test: ^0.12.13
