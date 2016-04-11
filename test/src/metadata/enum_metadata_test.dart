@@ -89,8 +89,11 @@ void main() {
   });
   test('invalid type', () {
     var wrongType = {
-      'type': 'number',
-      'enum': [0.0, 1.0, 2.0]
+      'type': 'array',
+      'items': {
+        'type': 'string'
+      },
+      'enum': [['0.0'], ['1.0'], ['2.0']]
     };
 
     expect(
