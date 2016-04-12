@@ -20,11 +20,17 @@ import 'package:dogma_json_schema/metadata.dart';
 // Library contents
 //---------------------------------------------------------------------
 
-void _expectFieldMetadata(ClassMetadata metadata, Map properties) {
+void _expectFieldMetadata(ClassMetadata metadata,
+                          Map properties,
+                         {List<String> requiredFields}) {
+  requiredFields ??= <String>[];
+
   properties.forEach((name, value) {
+    var expectedName = value['x-field-name'] ?? camelCase(name);
+
     var actual = classMetadataQuery/*<FieldMetadata>*/(
         metadata,
-        nameMatch(camelCase(name)),
+        nameMatch(expectedName),
         includeFields: true
     ) as FieldMetadata;
 
@@ -39,29 +45,33 @@ void _expectFieldMetadata(ClassMetadata metadata, Map properties) {
     expect(serialize.name, name);
     expect(serialize.encode, isTrue);
     expect(serialize.decode, isTrue);
-    expect(serialize.optional, isFalse);
+
+    var required = requiredFields.isEmpty || requiredFields.contains(name);
+    expect(serialize.optional, equals(!required));
   });
 }
+
+final Map _builtinProperties = {
+  'anInt': {
+    'description': 'An int',
+    'type': 'integer'
+  },
+  'a-bool': {
+    'description': 'A bool',
+    'type': 'boolean'
+  },
+  'a_number': {
+    'description': 'A number',
+    'type': 'number'
+  }
+};
 
 /// Test entry point.
 void main() {
   test('model', () async {
     var builtin = {
       'description': 'Builtin',
-      'properties': {
-        'anInt': {
-          'description': 'An int',
-          'type': 'integer'
-        },
-        'a-bool': {
-          'description': 'A bool',
-          'type': 'boolean'
-        },
-        'a_number': {
-          'description': 'A number',
-          'type': 'number'
-        }
-      }
+      'properties': _builtinProperties
     };
 
     var metadata = await classMetadata('Builtin', builtin);
@@ -73,10 +83,71 @@ void main() {
     expect(metadata.fields, hasLength(properties.length));
     _expectFieldMetadata(metadata, properties);
   });
+  test('required fields', () async {
+    var builtin = {
+      'description': 'Builtin',
+      'properties': _builtinProperties,
+      'required': ['anInt']
+    };
+
+    var metadata = await classMetadata('Builtin', builtin);
+
+    expect(metadata.name, 'Builtin');
+    expect(metadata.comments, equalsIgnoringWhitespace(builtin['description']));
+
+    var properties = builtin['properties'] as Map;
+    expect(metadata.fields, hasLength(properties.length));
+    _expectFieldMetadata(
+        metadata,
+        properties,
+        requiredFields: builtin['required'] as List<String>
+    );
+  });
   test('extends', () {
 
   });
-  test('implements', () {
+  test('implements', () async {
+    var implements = {
+      'description': 'Builtin',
+      'allOf': [
+        // Additional properties
+        {'properties': _builtinProperties}
+      ]
+    };
 
+    var metadata = await classMetadata('Implements', implements);
+
+    expect(metadata.name, 'Implements');
+    expect(metadata.comments, equalsIgnoringWhitespace(implements['description']));
+
+    var allOf = implements['allOf'] as List<Map>;
+    var properties = allOf[0]['properties'] as Map;
+    expect(metadata.fields, hasLength(properties.length));
+    _expectFieldMetadata(metadata, properties);
+
+  });
+
+  // Extension tests
+
+  test('x-field-name', () async {
+    var explicitFieldNames = {
+      'description': 'Explicit field names',
+      'properties': {
+        'a-bool': {
+          'description': 'A bool',
+          'type': 'boolean',
+          'x-field-name': 'longWindedFieldName'
+        }
+      }
+    };
+
+    var metadata = await classMetadata('Builtin', explicitFieldNames);
+
+    expect(metadata.name, 'Builtin');
+    expect(metadata.comments, equalsIgnoringWhitespace(explicitFieldNames['description']));
+
+    var properties = explicitFieldNames['properties'] as Map;
+    expect(metadata.fields, hasLength(properties.length));
+    _expectFieldMetadata(metadata, properties);
   });
 }
