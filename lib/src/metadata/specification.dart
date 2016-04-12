@@ -33,6 +33,11 @@ const String items = 'items';
 /// The value for an object.
 const String object = 'object';
 
+/// Specifies that the given data must be valid against all the sub-schemas.
+///
+/// This is used to make an inheritance hierarchy when generating models.
+const String allOf = 'allOf';
+
 //---------------------------------------------------------------------
 // JSON Schema extensions
 //---------------------------------------------------------------------
@@ -43,3 +48,6 @@ const String dartType = 'x-dart-type';
 const String enumNames = 'x-enum-names';
 /// The key for enumeration descriptions.
 const String enumDescriptions = 'x-enum-descriptions';
+
+/// The key for an explicit field name
+const String fieldName = 'x-field-name';
