@@ -11,6 +11,7 @@
 
 import 'package:test/test.dart';
 
+import 'src/metadata/class_metadata_test.dart' as class_metadata_test;
 import 'src/metadata/commented_test.dart' as commented_test;
 import 'src/metadata/enum_metadata_test.dart' as enum_metadata_test;
 import 'src/metadata/type_metadata_test.dart' as type_metadata_test;
@@ -21,6 +22,7 @@ import 'src/metadata/type_metadata_test.dart' as type_metadata_test;
 
 /// Entry point for tests.
 void main() {
+  group('ClassMetadata', class_metadata_test.main);
   group('Commented', commented_test.main);
   group('EnumMetadata', enum_metadata_test.main);
   group('TypeMetadata', type_metadata_test.main);
