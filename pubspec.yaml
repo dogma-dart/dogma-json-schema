@@ -16,3 +16,5 @@ dependencies:
     path: ../dogma-source-analyzer
 dev_dependencies:
   test: ^0.12.13
+  dogma_codegen_test:
+    path: ../dogma-codegen-test
